@@ -1,0 +1,63 @@
+function [ D ] = Dcal( V, W0, Wi, Y, param, D_old)
+
+    D = zeros(1, length(V));
+    A = 2*param.theta;
+    for i = 1 : length(V)
+%         disp(['chl of D :', num2str(i)]); 
+
+        Vi = V{i};
+        Yn = Y;
+        
+        if any(any(isnan(Vi)))             
+            [m,n]=find(isnan(Vi)==1);
+            Vi(:,n)=[];
+            Yn(n)=[];
+        end
+            
+        
+        Wione = Wi(:,i);
+        ViTWi = Vi'*Wione;
+
+        Bmat = (Vi'*W0-Yn')*(W0'*Vi-Yn);
+        B = trace(Bmat);
+        
+        Cmat = ViTWi*ViTWi';
+        C = -trace(Cmat);
+        
+        E = -2*param.beta*norm(Wione).^2;
+    
+
+        eqn = [A B 0 C E];
+
+        s = roots(eqn);
+%         Dtsvl(i) = toc(Dsvl);
+
+        k = 1;
+        for j = 1 : length(s)
+            if( real(s(j))>0  &&  (real(s(j))>imag(s(j))) )
+                srl(k) = double(real(s(j)));
+                k = k + 1;
+            end
+        end
+        
+        if (k == 1)
+            disp('Warning: D is zero!');
+            D(i) = D_old(i);
+            continue;
+        end
+        
+        Dout = zeros(1, length(srl));
+        for k = 1 : length(srl)
+%             disp(['D', num2str(k),'of chl', num2str(i),': ', num2str(srl(k)) ]);
+            Dout(k) = Doneobjfun( Vi, srl(k), W0, Wi(:,i), Yn, param );
+        end
+        
+        [output,I] = min(Dout);
+        D(i) = srl(I);
+        
+        clear srl
+        
+    end
+    D = D./norm(D);
+end
+
